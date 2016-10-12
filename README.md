@@ -1,5 +1,5 @@
 # FireGun
-FireGun - a MAME compatible lightgun that uses a Wiimote IR tracking camera fused with an overkill DCM filter just so you can shoot gangsta style
+a MAME compatible lightgun that uses a Wiimote IR tracking camera fused with an overkill DCM filter just so you can shoot gangsta style
 
 By Marc Paquette  marc @^ dacsystemes.com
 
