@@ -9,10 +9,12 @@
 
 DCM dcm;
 
+uint32_t noMotionCount;
+
 // This is used to somewhat compensate for the IR sensor not pivoting exactly on it's axis.
 // Normally, you hold the gun in your hand, so the IR sensor will be at about an arm's length
 // from the pivot point.
-float irHeadingRatio = 0.75f; 
+float irHeadingRatio = 1.0f; 
 
 
 void loadScreenCalib()
@@ -49,9 +51,20 @@ bool initOrientation()
 void updateOrientation()
 {
   dcm.update(gx, gy, gz, ax, ay, az, irHeading * irHeadingRatio, irPitch, irConfidence);
-
-  heading = dcm.yaw / irHeadingRatio;
+  heading = dcm.yaw * irHeadingRatio;
   pitch = dcm.pitch;
   roll = dcm.roll;
-}
 
+  if (!active && irConfidence > 0.75f) active = true;
+  else {
+    if (!dcm.motion) {
+      
+      noMotionCount++;
+
+      if (noMotionCount >= 128) active = false;
+    }
+    else {
+      noMotionCount = 0;
+    }
+  }
+}

@@ -13,27 +13,38 @@ float rotatedY[4];
 int blobSize[4];
 bool blobGood[4];
 
-float xConfidence, yConfidence;
+unsigned long lastReading = 0;
 
 #define DIST_FILTER 0.1f
 float omegaFilter = DIST_FILTER;
 
 bool initIRTracking()
 {
-  return ir.init();
+  return ir.begin();
 }
 
 void readIRTracking()
 {
-  int i;
-
-  ir.read();
-
+  int i = 0;
+  unsigned long now = micros();
+  
   irConfidence = 0.0f;
 
+  if ((now - lastReading) < 10000)
+  {
+    return;
+  }
+
+  ledPower = 0;
+  
+  ir.read();
+
+  lastReading = now;
+
+
   // Pre compute last known roll sin/cos in preparation for rotation
-  float sin_roll = sin(roll);
-  float cos_roll = cos(roll);
+  float sin_roll = sinf(roll);
+  float cos_roll = cosf(roll);
 
   //Process blobs
   for (i = 0; i < 4; i++)
@@ -78,7 +89,7 @@ void readIRTracking()
     }
   }
 
-  // Check if we can compute distance
+  // Check if we can compute orientation
   if (leftBlob >= 0 && rightBlob >= 0)
   {
     // We have 2 blobs. Swap them if needed
@@ -94,13 +105,13 @@ void readIRTracking()
     float deltaX = abs(rotatedX[leftBlob] - rotatedX[rightBlob]);
     float deltaY = abs(rotatedY[leftBlob] - rotatedY[rightBlob]);
 
-    // Check if they are at the right distance & that level is good
-    if (deltaX > 0.075f && deltaX < 0.450f && deltaY < 0.075f)
+    // Check if they are at the right distance
+    if (deltaX > 0.075f && deltaX < 0.500f && deltaY < 0.075f)
     {
-      irHeading = (rotatedX[leftBlob] + rotatedX[rightBlob]) / 2.0f;
-      irPitch = (rotatedY[leftBlob] + rotatedY[rightBlob]) / 2.0f;
+      irHeading = (rotatedX[leftBlob] + rotatedX[rightBlob]) * 0.5f;
+      irPitch = (rotatedY[leftBlob] + rotatedY[rightBlob]) * 0.5f;
 
-      irConfidence = constrain(1.0f - max(abs(irHeading * 2.85f), abs(irPitch * 3.8f)), 0.0f , 1.0f);
+      irConfidence = constrain(1.0f - max(abs(irHeading * 4.5f), abs(irPitch * 3.8f)), 0.0f , 1.0f);
 
       omegaFilter = irConfidence * DIST_FILTER;
 
@@ -108,11 +119,10 @@ void readIRTracking()
       omegaBlobs = (omegaBlobs * (1.0f - omegaFilter)) + (deltaX * omegaFilter);
     }
     else
-    {
+    {     
       // both blobs to their rooms for the evening
       leftBlob = -1;
       rightBlob = -1;
     }
   }
 }
-

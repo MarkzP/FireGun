@@ -49,12 +49,12 @@ PVision::PVision()
   Public methods
 ******************************************************************************/
 // init the PVision sensor
-bool PVision::init(void)
+bool PVision::begin(void)
 {
   Wire.begin();
-  Wire.setClock(400000);
+  Wire.setClock(800000);
 
-  delay(10);
+  delay(100);
   writeByte(0x30, 0x01);
   delay(10);
   writeBytes(0x00, block1, sizeof(block1)); //Sensitivity Block 1
@@ -75,7 +75,7 @@ int PVision::read(void)
   int i;
   int offset;
   int timeout = 16;
-
+  
   blobcount = -1;
   memset(data, 0, count);
 
@@ -98,10 +98,12 @@ int PVision::read(void)
 
   for (i = 0; i < count; i++)
   {
-    if (Wire.available())
+    if (!Wire.available())
     {
-      data[i] = Wire.read();
+      resetBlobs();
+      return -1;
     }
+    data[i] = Wire.read();
   }
 
   blobcount = 0;
@@ -115,12 +117,11 @@ int PVision::read(void)
     Blob[i].Found = Blob[i].Size < 15;
     if (Blob[i].Found)
     {
-      Blob[i].Scaled_X = (Blob[i].X - HALF_H_RES) * RAD_PER_PIXEL;
-      Blob[i].Scaled_Y = (Blob[i].Y - HALF_V_RES) * RAD_PER_PIXEL;
+      Blob[i].Scaled_X = (float)(Blob[i].X - HALF_H_RES) * (float)RAD_PER_PIXEL;
+      Blob[i].Scaled_Y = (float)(Blob[i].Y - HALF_V_RES) * (float)RAD_PER_PIXEL;
       blobcount++;
     }
   }
 
   return blobcount;
 }
-

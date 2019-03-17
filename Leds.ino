@@ -1,36 +1,25 @@
 
 // This file contains methods used to turn leds on or off
 
-// Up to 2 leds are supported:
-//  -The Onboard led (comment to turn off)
-#define INT_LED LED_BUILTIN
-
-//  -An external led driven by a 20ma capable pin via a ~120ohm resistor
+//  -An external led driven by a 20ma capable pin via a ~120ohm resistor (pins 5, 16, 17 & 21)
 //    (uncomment one or none)
-#define EXT_LED 5
-//#define EXT_LED 16
-//#define EXT_LED 17
-//#define EXT_LED 21
+#define EXT_LED     16
+#define EXT_LED_2   5
+
+uint8_t flashState = HIGH;
 
 void initLeds()
 {
-#ifdef INT_LED
-  pinMode(INT_LED, OUTPUT);
-#endif
-#ifdef EXT_LED
+  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(EXT_LED, OUTPUT);
-#endif
+  pinMode(EXT_LED_2, OUTPUT);
 }
 
 // Helper function to simplify turning all leds on or off
 void led(uint8_t state)
 {
-#ifdef INT_LED
-  digitalWrite(INT_LED, state);
-#endif
-#ifdef EXT_LED
-  digitalWrite(EXT_LED, state);
-#endif
+  digitalWriteFast(EXT_LED, state);
+  digitalWriteFast(EXT_LED_2, state);
 }
 
 // Flash forever if something goes wrong
@@ -52,5 +41,16 @@ void flashOfDeath(int quickFlashes)
 void refreshLeds()
 {
   // For now, only turn on led when calibrating
-  led(calibrating ? HIGH : LOW);
+  if (calibrating)
+  {
+    if (irConfidence > 0.5f) flashState = !flashState;
+    else flashState = HIGH;
+    digitalWriteFast(EXT_LED, flashState);
+    digitalWriteFast(EXT_LED_2, flashState);
+  }
+  else
+  {
+    digitalWriteFast(EXT_LED, LOW);
+    digitalWriteFast(EXT_LED_2, LOW);
+  }  
 }

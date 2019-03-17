@@ -33,12 +33,9 @@
 
    To calibrate the screen area:
      -Point to the upper left corner
-     -Hold the trigger until the led comes on (default is 7 seconds)
+     -Hold the trigger & button 1 until the led comes on (default is 7 seconds)
      -While holding the trigger, move to the lower right corner
      -Release the trigger to save calibration
-
-   To switch between joystick & mouse mode:
-     -Hold both the trigger & button 1 until led flashes once (quickly)
 
    Troubleshooting:
      -Make sure to aim squarely at the sensor bar once in a while (this will re-aling the DCM heading)
@@ -57,6 +54,10 @@
 // Global variables
 
 bool useMouse = false; //You can set this to true to boot in mouse mode. (Joystick mode by default)
+
+int ledPower = 0;
+
+bool active = false;
 
 bool calibrating = false;
 bool ir_valid = false;
@@ -84,10 +85,22 @@ float centerPitch = 0.0f;
 float rangeHeading = 0.1f;
 float rangePitch = 0.1f;
 
+//unsigned long t0;
+//unsigned long lastCycle;
+//unsigned long cycleTime;
+//unsigned long cpuTime;
+
+
+
+
 
 void setup()
 {
   delay(500);
+
+//  Serial.begin(115200);
+
+//  lastCycle = micros();
 
   // Init everything
   initLeds();
@@ -103,12 +116,34 @@ void loop()
   if (gyroDataAvailable())
   {
     // Gyro data ready! Time to compute new values
+    
+//    t0 = micros();
+//    cycleTime = t0 - lastCycle;
+//    lastCycle = t0;
+    
+    
     readGyroAccel();
     readIRTracking();
     updateOrientation();
     checkButtons();
     sendPosition();
     refreshLeds();
+
+//    cpuTime = micros() - t0;
+
+//    Serial.print(cycleTime);
+//    Serial.print("\t");
+//    Serial.print(cpuTime);
+//    Serial.println();
+
+//    Serial.print(heading, 4);
+//    Serial.print("\t");
+//    Serial.print(irHeading, 4);
+//    Serial.print("\t");
+//    Serial.print(dcm.pitch, 4);
+//    Serial.print("\t");
+//    Serial.print(irPitch, 4);
+//    Serial.println();
+
   }
 }
-

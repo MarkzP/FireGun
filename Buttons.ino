@@ -16,9 +16,7 @@
 
 unsigned long lastButtonRelease = 0;
 
-bool trigger = false;
-bool button1 = false;
-bool button2 = false;
+bool isButton1NC = false;
 
 
 float top = 0.0f;
@@ -34,6 +32,10 @@ bool initButtons()
   pinMode(BUTTON2_PIN, INPUT_PULLUP);
   pinMode(TRIGGER_PIN, INPUT_PULLUP);
 
+  delay(50);
+
+  isButton1NC = !digitalReadFast(BUTTON1_PIN);
+
   return true; //This one never fails...
 }
 
@@ -45,52 +47,26 @@ void checkButtons()
   // For those wondering, no need to debounce - most MAME games already implement some form of control debouncing anyways.
   //  it would only introduce more lag
 
-  bool triggerPressed = !digitalRead(TRIGGER_PIN);
-  bool button1Pressed = !digitalRead(BUTTON1_PIN);
-  bool button2Pressed = !digitalRead(BUTTON2_PIN);
+  bool triggerPressed = !digitalReadFast(TRIGGER_PIN);
+  bool button1Pressed = isButton1NC ? digitalReadFast(BUTTON1_PIN) : !digitalReadFast(BUTTON1_PIN);
+  bool button2Pressed = !digitalReadFast(BUTTON2_PIN);
 
-  if (triggerPressed != trigger)
-  {
-    setButtonState(1, triggerPressed);
-    trigger = triggerPressed;
-  }
-
-  if (button1Pressed != button1)
-  {
-    setButtonState(2, button1Pressed);
-    button1 = button1Pressed;
-  }
-
-  if (button2Pressed != button2)
-  {
-    setButtonState(3, button2Pressed);
-    button2 = button2Pressed;
-  }
+  setButtonState(1, triggerPressed);
+  setButtonState(2, button1Pressed);
+  setButtonState(3, button2Pressed);
 
   if (triggerPressed)
   {
-    if (!calibrating && (millis() - lastButtonRelease) > HOLD_TIMEOUT)
+    if (!calibrating && button1Pressed && (millis() - lastButtonRelease) > HOLD_TIMEOUT)
     {
-      if (button1Pressed)
-      {
-        //Switch mode
-        useMouse = !useMouse;
+      //calibrate screen area et Upper left corner
+      calibrating = true;
 
-        initOutputDevice();
-
-        lastButtonRelease = millis(); //So that is doesn't switch in a continuous loop
-      }
-      else
-      {
-        //calibrate screen area et Upper left corner
-        calibrating = true;
-
-        top = pitch;
-        bottom = pitch;
-        left = heading;
-        right = heading;
-        omegaCalib = omegaBlobs;
-      }
+      top = pitch;
+      bottom = pitch;
+      left = heading;
+      right = heading;
+      omegaCalib = omegaBlobs; 
     }
 
     if (calibrating)
@@ -107,9 +83,9 @@ void checkButtons()
     if (calibrating)
     {
       //Trigger released after calibration
-      omegaCalib = (omegaCalib + omegaBlobs) / 2.0f;
-      centerHeading = (left + right) / 2.0f;
-      centerPitch = (top + bottom) / 2.0f;
+      omegaCalib = (omegaCalib + omegaBlobs) * 0.5f;
+      centerHeading = (left + right) * 0.5f;
+      centerPitch = (top + bottom) * 0.5f;
 
       rangeHeading = (left - right) / omegaCalib;
       rangePitch = (bottom - top) / omegaCalib;
@@ -122,4 +98,3 @@ void checkButtons()
     lastButtonRelease = millis();
   }
 }
-

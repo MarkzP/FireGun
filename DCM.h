@@ -65,6 +65,9 @@ class DCM
     float pitch = 0.0f;
     float yaw = 0.0f;
 
+    bool motion = false;
+    bool ir_lock = false;
+
     void update(float gx, float gy, float gz, float ax, float ay, float az, float irh, float irp, float irc);
 
     float getAccelPitch(void);
@@ -93,7 +96,7 @@ class DCM
     float Update_Matrix[3][3] = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
     float Temporary_Matrix[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
-    bool ir_lock = false;
+    
 
     float gyroAvg = 0;
     float motionAvg = 0;
@@ -102,7 +105,7 @@ class DCM
     float gyro_bias[3] = {0, 0, 0};
     int gyro_index = 0;
     int gyroSampleCount = 0;
-    bool motion = false;
+    
     bool gyroCalibrated = false;
 
     void reset_sensor_fusion(void);

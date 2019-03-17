@@ -22,12 +22,14 @@
 #include "DCM.h"
 #include <Arduino.h>
 
+#define NOLOOP
+
 void DCM::update(float gx, float gy, float gz, float ax, float ay, float az, float irh, float irp, float irc)
 {
   unsigned long timestamp_old = timestamp;
   timestamp = micros();
 
-  G_Dt = (timestamp - timestamp_old) / 1000000.0f; // Real time of loop run. We use this on the DCM algorithm (gyro integration time)
+  G_Dt = (timestamp - timestamp_old) * 0.000001f; // Real time of loop run. We use this on the DCM algorithm (gyro integration time)
 
   gyro[0] = gx;
   gyro[1] = gy;
@@ -76,7 +78,7 @@ void DCM::update(float gx, float gy, float gz, float ax, float ay, float az, flo
 
   if (!ir_lock)
   {
-    if (ir_confidence > 0.6f)
+    if (ir_confidence > 0.75f)
     {
       yaw = ir_heading;
       init_rotation_matrix();
@@ -98,7 +100,7 @@ void DCM::update(float gx, float gy, float gz, float ax, float ay, float az, flo
 
 float DCM::getAccelPitch(void)
 {
-  return -atan2(accel[0], sqrt(accel[1] * accel[1] + accel[2] * accel[2]));
+  return -atan2f(accel[0], sqrt(accel[1] * accel[1] + accel[2] * accel[2]));
 }
 
 
@@ -115,7 +117,7 @@ float DCM::getAccelRoll(void)
   // Normally using x-z-plane-component/y-component of compensated gravity vector
   // roll = atan2(temp2[1], sqrt(temp2[0] * temp2[0] + temp2[2] * temp2[2]));
   // Since we compensated for pitch, x-z-plane-component equals z-component:
-  return atan2(temp2[1], temp2[2]);
+  return atan2f(temp2[1], temp2[2]);
 }
 
 void DCM::detectMotion(void)
@@ -139,7 +141,7 @@ void DCM::computeGyroBias(void)
     gyro_sum[j] /= (float)GYRO_SAMPLE_COUNT; //Average over samples
     magnitude += (gyro_sum[j] * gyro_sum[j]); //Compute magnitude
   }
-  magnitude = sqrt(magnitude);
+  magnitude = sqrtf(magnitude);
 
   if (magnitude < 0.5f)
   {
@@ -157,12 +159,12 @@ void DCM::computeGyroBias(void)
 // Init rotation matrix using euler angles
 void DCM::init_rotation_matrix(void)
 {
-  float c1 = cos(roll);
-  float s1 = sin(roll);
-  float c2 = cos(pitch);
-  float s2 = sin(pitch);
-  float c3 = cos(yaw);
-  float s3 = sin(yaw);
+  float c1 = cosf(roll);
+  float s1 = sinf(roll);
+  float c2 = cosf(pitch);
+  float s2 = sinf(pitch);
+  float c3 = cosf(yaw);
+  float s3 = sinf(yaw);
 
   // Euler angles, right-handed, intrinsic, XYZ convention
   // (which means: rotate around body axes Z, Y', X'')
@@ -182,7 +184,7 @@ void DCM::init_rotation_matrix(void)
 void DCM::reset_sensor_fusion(void) {
   float Accel_magnitude;
 
-  Accel_magnitude = sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
+  Accel_magnitude = sqrtf(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
   if (Accel_magnitude > 0)
   {
     pitch = getAccelPitch();
@@ -216,7 +218,7 @@ void DCM::normalize(void)
   float temporary[3][3];
   float renorm = 0;
 
-  error = -Vector_Dot_Product(&DCM_Matrix[0][0], &DCM_Matrix[1][0]) * .5; //eq.19
+  error = -Vector_Dot_Product(&DCM_Matrix[0][0], &DCM_Matrix[1][0]) * 0.5f; //eq.19
 
   Vector_Scale(&temporary[0][0], &DCM_Matrix[1][0], error); //eq.19
   Vector_Scale(&temporary[1][0], &DCM_Matrix[0][0], error); //eq.19
@@ -226,13 +228,13 @@ void DCM::normalize(void)
 
   Vector_Cross_Product(&temporary[2][0], &temporary[0][0], &temporary[1][0]); // c= a x b //eq.20
 
-  renorm = .5 * (3 - Vector_Dot_Product(&temporary[0][0], &temporary[0][0])); //eq.21
+  renorm = 0.5f * (3.0f - Vector_Dot_Product(&temporary[0][0], &temporary[0][0])); //eq.21
   Vector_Scale(&DCM_Matrix[0][0], &temporary[0][0], renorm);
 
-  renorm = .5 * (3 - Vector_Dot_Product(&temporary[1][0], &temporary[1][0])); //eq.21
+  renorm = 0.5f * (3.0f - Vector_Dot_Product(&temporary[1][0], &temporary[1][0])); //eq.21
   Vector_Scale(&DCM_Matrix[1][0], &temporary[1][0], renorm);
 
-  renorm = .5 * (3 - Vector_Dot_Product(&temporary[2][0], &temporary[2][0])); //eq.21
+  renorm = 0.5f * (3.0f - Vector_Dot_Product(&temporary[2][0], &temporary[2][0])); //eq.21
   Vector_Scale(&DCM_Matrix[2][0], &temporary[2][0], renorm);
 }
 
@@ -254,7 +256,7 @@ void DCM::driftCorrection(void)
   //*****Roll and Pitch***************
   // Calculate the magnitude of the accelerometer vector
 
-  Accel_magnitude = sqrt(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
+  Accel_magnitude = sqrtf(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
   if (Accel_magnitude > 0)
   {
     // Dynamic weighting of accelerometer info (reliability filter)
@@ -262,7 +264,7 @@ void DCM::driftCorrection(void)
     //Accel_weight = constrain(1 - 2*abs(1 - Accel_magnitude),0,1);  //
 
     // Modified to account for off-center sensors; accels are trusted only between 0.75 & 1.25g
-    Accel_weight = constrain(1 - 4 * abs(1 - Accel_magnitude), 0, 1);
+    Accel_weight = constrain(1.0f - 4.0f * abs(1.0f - Accel_magnitude), 0.0f, 1.0f);
 
     Vector_Cross_Product(&errorRollPitch[0], &accel[0], &DCM_Matrix[2][0]); //adjust the ground of reference
     Vector_Scale(&Omega_P[0], &errorRollPitch[0], Kp_ROLLPITCH * Accel_weight);
@@ -273,8 +275,8 @@ void DCM::driftCorrection(void)
 
   //*****YAW***************
   // We make the gyro YAW drift correction based on ir heading
-  heading_x = cos(ir_heading);
-  heading_y = sin(ir_heading);
+  heading_x = cosf(ir_heading);
+  heading_y = sinf(ir_heading);
   errorCourse = (DCM_Matrix[0][0] * heading_y) - (DCM_Matrix[1][0] * heading_x); //Calculating YAW error
   Vector_Scale(errorYaw, &DCM_Matrix[2][0], errorCourse); //Applys the yaw correction to the XYZ rotation of the aircraft, depeding the position.
 
@@ -287,9 +289,9 @@ void DCM::driftCorrection(void)
 
 void DCM::computeAngles(void)
 {
-  pitch = -asin(DCM_Matrix[2][0]);
-  roll = atan2(DCM_Matrix[2][1], DCM_Matrix[2][2]);
-  yaw = atan2(DCM_Matrix[1][0], DCM_Matrix[0][0]);
+  pitch = -asinf(DCM_Matrix[2][0]);
+  roll = atan2f(DCM_Matrix[2][1], DCM_Matrix[2][2]);
+  yaw = atan2f(DCM_Matrix[1][0], DCM_Matrix[0][0]);
 }
 
 void DCM::matrixUpdate(void)
@@ -309,6 +311,19 @@ void DCM::matrixUpdate(void)
 
   Matrix_Multiply(DCM_Matrix, Update_Matrix, Temporary_Matrix); //a*b=c
 
+#ifdef NOLOOP
+  DCM_Matrix[0][0] += Temporary_Matrix[0][0];
+  DCM_Matrix[0][1] += Temporary_Matrix[0][1];
+  DCM_Matrix[0][2] += Temporary_Matrix[0][2];
+
+  DCM_Matrix[1][0] += Temporary_Matrix[1][0];
+  DCM_Matrix[1][1] += Temporary_Matrix[1][1];
+  DCM_Matrix[1][2] += Temporary_Matrix[1][2];
+
+  DCM_Matrix[2][0] += Temporary_Matrix[2][0];
+  DCM_Matrix[2][1] += Temporary_Matrix[2][1];
+  DCM_Matrix[2][2] += Temporary_Matrix[2][2];
+#else
   for (int x = 0; x < 3; x++) //Matrix Addition (update)
   {
     for (int y = 0; y < 3; y++)
@@ -316,6 +331,7 @@ void DCM::matrixUpdate(void)
       DCM_Matrix[x][y] += Temporary_Matrix[x][y];
     }
   }
+#endif
 }
 
 
@@ -324,10 +340,16 @@ float DCM::Vector_Dot_Product(float *v1, float *v2)
 {
   float result = 0;
 
+#ifdef NOLOOP
+  result += v1[0] * v2[0];
+  result += v1[1] * v2[1];
+  result += v1[2] * v2[2];
+#else
   for (int c = 0; c < 3; c++)
   {
     result += v1[c] * v2[c];
   }
+#endif
 
   return result;
 }
@@ -344,25 +366,51 @@ void DCM::Vector_Cross_Product(float *out,  float *v1,  float *v2)
 // Multiply the vector by a scalar
 void DCM::Vector_Scale(float out[3],  float v[3], float scale)
 {
+#ifdef NOLOOP
+  out[0] = v[0] * scale;
+  out[1] = v[1] * scale;
+  out[2] = v[2] * scale;
+#else
   for (int c = 0; c < 3; c++)
   {
     out[c] = v[c] * scale;
   }
+#endif
 }
 
 // Adds two vectors
 void DCM::Vector_Add(float out[3],  float v1[3],  float v2[3])
 {
+#ifdef NOLOOP
+  out[0] = v1[0] + v2[0];
+  out[1] = v1[1] + v2[1];
+  out[2] = v1[2] + v2[2];
+#else
   for (int c = 0; c < 3; c++)
   {
     out[c] = v1[c] + v2[c];
   }
+#endif
 }
 
 // Multiply two 3x3 matrices: out = a * b
 // out has to different from a and b (no in-place)!
 void DCM::Matrix_Multiply( float a[3][3], float b[3][3], float out[3][3])
 {
+#ifdef NOLOOP
+  out[0][0] = a[0][0] * b[0][0] + a[0][1] * b[1][0] + a[0][2] * b[2][0];
+  out[0][1] = a[0][0] * b[0][1] + a[0][1] * b[1][1] + a[0][2] * b[2][1];
+  out[0][2] = a[0][0] * b[0][2] + a[0][1] * b[1][2] + a[0][2] * b[2][2];
+
+  out[1][0] = a[1][0] * b[0][0] + a[1][1] * b[1][0] + a[1][2] * b[2][0];
+  out[1][1] = a[1][0] * b[0][1] + a[1][1] * b[1][1] + a[1][2] * b[2][1];
+  out[1][2] = a[1][0] * b[0][2] + a[1][1] * b[1][2] + a[1][2] * b[2][2];
+
+  out[2][0] = a[2][0] * b[0][0] + a[2][1] * b[1][0] + a[2][2] * b[2][0];
+  out[2][1] = a[2][0] * b[0][1] + a[2][1] * b[1][1] + a[2][2] * b[2][1];
+  out[2][2] = a[2][0] * b[0][2] + a[2][1] * b[1][2] + a[2][2] * b[2][2];
+
+#else
   for (int x = 0; x < 3; x++) // rows
   {
     for (int y = 0; y < 3; y++) // columns
@@ -370,20 +418,22 @@ void DCM::Matrix_Multiply( float a[3][3], float b[3][3], float out[3][3])
       out[x][y] = a[x][0] * b[0][y] + a[x][1] * b[1][y] + a[x][2] * b[2][y];
     }
   }
+#endif
 }
 
 // Multiply 3x3 matrix with vector: out = a * b
 // out has to different from b (no in-place)!
 void DCM::Matrix_Vector_Multiply( float a[3][3], float b[3], float out[3])
 {
+#ifdef NOLOOP
+  out[0] = a[0][0] * b[0] + a[0][1] * b[1] + a[0][2] * b[2];
+  out[1] = a[1][0] * b[0] + a[1][1] * b[1] + a[1][2] * b[2];
+  out[2] = a[2][0] * b[0] + a[2][1] * b[1] + a[2][2] * b[2];
+#else  
   for (int x = 0; x < 3; x++)
   {
     out[x] = a[x][0] * b[0] + a[x][1] * b[1] + a[x][2] * b[2];
   }
+#endif
+
 }
-
-
-
-
-
-

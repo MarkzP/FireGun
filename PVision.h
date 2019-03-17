@@ -68,7 +68,7 @@ class PVision
   public:
     PVision();
 
-    bool init();   // returns true if the connection to the sensor established correctly
+    bool begin();   // returns true if the connection to the sensor established correctly
     int read();   // updated the blobs, and returns the number of blobs detected
 
     blob_t Blob[4];
